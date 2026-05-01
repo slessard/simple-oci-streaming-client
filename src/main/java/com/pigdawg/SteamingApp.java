@@ -2,15 +2,11 @@ package com.pigdawg;
 
 import com.oracle.bmc.streaming.StreamAdminClient;
 import com.oracle.bmc.streaming.StreamClient;
-import com.oracle.bmc.streaming.model.Message;
-import com.oracle.bmc.streaming.responses.CreateCursorResponse;
+import com.oracle.bmc.streaming.responses.CreateGroupCursorResponse;
 import com.oracle.bmc.streaming.responses.CreateStreamPoolResponse;
 import com.oracle.bmc.streaming.responses.CreateStreamResponse;
-import com.oracle.bmc.streaming.responses.GetMessagesResponse;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,8 +94,12 @@ public class SteamingApp {
                 final long producerDeadlineMs = startMs + 10_000;
                 final long consumerDeadlineMs = startMs + 15_000;
 
-                CreateCursorResponse createCursorResponse = OciStreamingHelper.createCursor(streamClient, streamId);
-                String cursor = createCursorResponse.getCursor().getValue();
+                // A cursor can be created as part of a consumer group.
+                // Committed offsets are managed for the group, and partitions
+                // are dynamically balanced amongst consumers in the group.
+                CreateGroupCursorResponse groupCursorResponse = OciStreamingHelper.createGroupCursor(streamClient, streamId, consumerGroupName, cursorName);
+                String cursor = groupCursorResponse.getCursor().getValue();
+                LOG.debug("Consumer cursor created for stream={}", streamId);
 
                 ProducerConsumerThreads producerConsumerThreads =
                         new ProducerConsumerThreads(
@@ -136,46 +136,6 @@ public class SteamingApp {
             }
         }
 
-//        // A cursor can be created as part of a consumer group.
-//        // Committed offsets are managed for the group, and partitions
-//        // are dynamically balanced amongst consumers in the group.
-//        LOG.info("Starting a simple message loop with a group cursor");
-//        CreateGroupCursorResponse groupCursorResponse = OciStreamingHelper.createGroupCursor(streamClient, streamId, consumerGroupName, cursorName);
-//        simpleReadMessagesLoop(streamClient, streamId, groupCursorResponse.getCursor().getValue());
-
         LOG.info("SteamingApp done");
-    }
-
-    private static void simpleReadMessagesLoop(StreamClient streamClient, String streamId, String cursor)
-            throws InterruptedException {
-        String currentCursor = cursor;
-        LOG.info("Starting simple read loop streamId={}", streamId);
-
-        for (int i = 0; i < 20; i++) {
-            GetMessagesResponse response = OciStreamingHelper.getMessages(streamClient, streamId, currentCursor, 10);
-
-            List<Message> messages = response.getItems();
-            if (messages == null || messages.isEmpty()) {
-                LOG.debug("Simple loop poll returned no messages");
-                Thread.sleep(1000);
-            } else {
-                for (Message message : messages) {
-                    String value = new String(message.getValue(), StandardCharsets.UTF_8);
-                    LOG.info(
-                            "partition={} offset={} key={} value={}",
-                            message.getPartition(),
-                            message.getOffset(),
-                            message.getKey(),
-                            value);
-                }
-            }
-
-            if (response.getOpcNextCursor() == null || response.getOpcNextCursor().isEmpty()) {
-                break;
-            }
-
-            currentCursor = response.getOpcNextCursor();
-        }
-        LOG.info("Simple read loop complete streamId={}", streamId);
     }
 }
