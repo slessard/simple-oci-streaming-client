@@ -76,23 +76,6 @@ public final class OciStreamingHelper {
                 .build(new SessionTokenAuthenticationDetailsProvider(authProfile));
     }
 
-    public static UpdateStreamResponse updateStream(StreamAdminClient adminClient, String streamId) {
-        UpdateStreamRequest updateStreamRequest = UpdateStreamRequest.builder()
-                .streamId(streamId)
-                .updateStreamDetails(UpdateStreamDetails.builder()
-                        .freeformTags(ImmutableMap.of("test", "value"))
-                        .build())
-                .build();
-
-        return adminClient.updateStream(updateStreamRequest);
-    }
-
-    public static GetStreamResponse getStream(StreamAdminClient adminClient, String streamId) {
-        return adminClient.getStream(GetStreamRequest.builder()
-                .streamId(streamId)
-                .build());
-    }
-
     public static void waitForStreamPoolToBecomeActive(StreamAdminClient adminClient, String streamPoolId, long resourceWaitTimeoutMs)
             throws InterruptedException {
         final long deadline = System.currentTimeMillis() + resourceWaitTimeoutMs;
@@ -178,11 +161,6 @@ public final class OciStreamingHelper {
                         .build());
     }
 
-    public static DeleteStreamPoolResponse deleteStreamPool(StreamAdminClient adminClient, String streamPoolId) {
-        LOG.info("Deleting stream pool via API streamPoolId={}", streamPoolId);
-        return adminClient.deleteStreamPool(DeleteStreamPoolRequest.builder().streamPoolId(streamPoolId).build());
-    }
-
     public static CreateStreamPoolResponse createStreamPool(
             StreamAdminClient adminClient,
             String compartmentId,
@@ -194,6 +172,11 @@ public final class OciStreamingHelper {
                         .name(poolName)
                         .build())
                 .build());
+    }
+
+    public static DeleteStreamPoolResponse deleteStreamPool(StreamAdminClient adminClient, String streamPoolId) {
+        LOG.info("Deleting stream pool via API streamPoolId={}", streamPoolId);
+        return adminClient.deleteStreamPool(DeleteStreamPoolRequest.builder().streamPoolId(streamPoolId).build());
     }
 
     public static CreateStreamResponse createStream(
@@ -210,6 +193,28 @@ public final class OciStreamingHelper {
                 .build());
     }
 
+    public static GetStreamResponse getStream(StreamAdminClient adminClient, String streamId) {
+        return adminClient.getStream(GetStreamRequest.builder()
+                .streamId(streamId)
+                .build());
+    }
+
+    public static UpdateStreamResponse updateStream(StreamAdminClient adminClient, String streamId) {
+        UpdateStreamRequest updateStreamRequest = UpdateStreamRequest.builder()
+                .streamId(streamId)
+                .updateStreamDetails(UpdateStreamDetails.builder()
+                        .freeformTags(ImmutableMap.of("test", "value"))
+                        .build())
+                .build();
+
+        return adminClient.updateStream(updateStreamRequest);
+    }
+
+    public static DeleteStreamResponse deleteStream(StreamAdminClient adminClient, String streamId) {
+        LOG.info("Deleting stream via API streamId={}", streamId);
+        return adminClient.deleteStream(DeleteStreamRequest.builder().streamId(streamId).build());
+    }
+
     public static void deleteStreams(List<StreamSummary> streamSummaries, StreamAdminClient adminClient) {
         for (StreamSummary streamSummary : streamSummaries) {
             LOG.info("Trying to delete streamId={}", streamSummary.getId());
@@ -220,11 +225,6 @@ public final class OciStreamingHelper {
             }
             LOG.info("Deleted streamId={}", streamSummary.getId());
         }
-    }
-
-    public static DeleteStreamResponse deleteStream(StreamAdminClient adminClient, String streamId) {
-        LOG.info("Deleting stream via API streamId={}", streamId);
-        return adminClient.deleteStream(DeleteStreamRequest.builder().streamId(streamId).build());
     }
 
     public static List<StreamSummary> listStreams(
@@ -257,9 +257,7 @@ public final class OciStreamingHelper {
             String tenancyOcid) throws IOException {
         LOG.info("Listing compartment OCIDs for tenancy={}", tenancyOcid);
 
-        IdentityClient identityClient = createIdentityClient(identityEndpoint, authProfile);
-
-        try {
+        try (IdentityClient identityClient = createIdentityClient(identityEndpoint, authProfile)) {
             List<String> compartmentOcids = new ArrayList<>();
             String page = null;
 
@@ -285,8 +283,24 @@ public final class OciStreamingHelper {
             return compartmentOcids;
         } finally {
             LOG.debug("Closing identity client");
-            identityClient.close();
         }
+    }
+
+    public static CreateCursorResponse createCursor(StreamClient streamClient, String streamId) {
+        LOG.debug("Creating cursor for streamId={}", streamId);
+        CreateCursorDetails cursorDetails = CreateCursorDetails.builder()
+                .type(CreateCursorDetails.Type.TrimHorizon)
+                .partition("0")
+                .build();
+
+        CreateCursorResponse createCursorResponse = streamClient.createCursor(
+                CreateCursorRequest.builder()
+                        .streamId(streamId)
+                        .createCursorDetails(cursorDetails)
+                        .build());
+
+        LOG.debug("cursor created for stream={}", streamId);
+        return createCursorResponse;
     }
 
     public static CreateGroupCursorResponse createGroupCursor(
@@ -302,25 +316,14 @@ public final class OciStreamingHelper {
                 .timeoutInMs(30000)
                 .build();
 
-        return streamClient.createGroupCursor(
+        CreateGroupCursorResponse groupCursor = streamClient.createGroupCursor(
                 CreateGroupCursorRequest.builder()
                         .streamId(streamId)
                         .createGroupCursorDetails(groupCursorDetails)
                         .build());
-    }
 
-    public static CreateCursorResponse createCursor(StreamClient streamClient, String streamId) {
-        LOG.debug("Creating cursor for streamId={}", streamId);
-        CreateCursorDetails cursorDetails = CreateCursorDetails.builder()
-                .type(CreateCursorDetails.Type.TrimHorizon)
-                .partition("0")
-                .build();
-
-        return streamClient.createCursor(
-                CreateCursorRequest.builder()
-                        .streamId(streamId)
-                        .createCursorDetails(cursorDetails)
-                        .build());
+        LOG.debug("group cursor created for stream={}", streamId);
+        return groupCursor;
     }
 
     public static PutMessagesResponse publishMessage(StreamClient streamClient, String streamId, String value) {
