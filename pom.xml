@@ -14,7 +14,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <oci.sdk.version>3.72.0</oci.sdk.version>
         <guava.version>33.2.1-jre</guava.version>
-        <commons.lang3.version>3.14.0</commons.lang3.version>
+        <commons.lang3.version>3.18.0</commons.lang3.version>
         <slf4j.version>2.0.17</slf4j.version>
         <logback.version>1.5.32</logback.version>
     </properties>
