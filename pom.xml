@@ -82,7 +82,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <mainClass>org.example.HttpApp</mainClass>
+                    <mainClass>com.pigdawg.SteamingApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>
