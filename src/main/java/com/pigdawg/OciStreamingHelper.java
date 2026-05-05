@@ -286,6 +286,23 @@ public final class OciStreamingHelper {
         }
     }
 
+    public static void validateAuthenticationToken(
+            String identityEndpoint,
+            String authProfile,
+            String tenancyOcid) throws IOException {
+        LOG.info("Validating authentication token against OCI Identity");
+
+        try (IdentityClient identityClient = createIdentityClient(identityEndpoint, authProfile)) {
+            identityClient.listCompartments(ListCompartmentsRequest.builder()
+                    .compartmentId(tenancyOcid)
+                    .compartmentIdInSubtree(Boolean.FALSE)
+                    .accessLevel(ListCompartmentsRequest.AccessLevel.Accessible)
+                    .limit(1)
+                    .build());
+            LOG.info("Authentication token validation succeeded");
+        }
+    }
+
     public static CreateCursorResponse createCursor(StreamClient streamClient, String streamId) {
         LOG.debug("Creating cursor for streamId={}", streamId);
         CreateCursorDetails cursorDetails = CreateCursorDetails.builder()

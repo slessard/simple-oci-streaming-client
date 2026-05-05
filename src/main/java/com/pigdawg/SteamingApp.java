@@ -65,6 +65,8 @@ public class SteamingApp {
         final String cursorName = String.format("stevel-cursor-%s", nowString);
         LOG.info("Generated names pool={} stream={} consumerGroup={} cursor={}", poolName, streamName, consumerGroupName, cursorName);
 
+        OciStreamingHelper.validateAuthenticationToken(ENDPOINT_OCI_IDENTITY, AUTH_PROFILE_DELTA, TENANT_STREAMING);
+
         // Streams are assigned a specific endpoint url based on where they are provisioned.
         // Create a stream client using the provided message endpoint.
         StreamClient streamClient = OciStreamingHelper.createStreamClient(ENDPOINT_OCI_STREAMING, AUTH_PROFILE_DELTA);
