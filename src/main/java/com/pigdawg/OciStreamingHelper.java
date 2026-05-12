@@ -6,6 +6,7 @@ import com.oracle.bmc.identity.IdentityClient;
 import com.oracle.bmc.identity.model.Compartment;
 import com.oracle.bmc.identity.requests.ListCompartmentsRequest;
 import com.oracle.bmc.identity.responses.ListCompartmentsResponse;
+import com.oracle.bmc.model.BmcException;
 import com.oracle.bmc.streaming.StreamAdminClient;
 import com.oracle.bmc.streaming.StreamClient;
 import com.oracle.bmc.streaming.model.CreateCursorDetails;
@@ -133,7 +134,17 @@ public final class OciStreamingHelper {
         final long deadline = System.currentTimeMillis() + resourceWaitTimeoutMs;
 
         while (System.currentTimeMillis() < deadline) {
-            GetStreamResponse response = getStream(adminClient, streamId);
+            GetStreamResponse response;
+            try {
+                response = getStream(adminClient, streamId);
+            } catch (BmcException ex) {
+                if (ex.getStatusCode() == 404) {
+                    LOG.info("Stream is no longer returned by OCI; treating it as DELETED. streamId={}", streamId);
+                    return;
+                }
+
+                throw ex;
+            }
 
             Stream.LifecycleState state = response.getStream().getLifecycleState();
             LOG.debug("Polling stream deletion state. streamId={} state={}", streamId, state);
@@ -179,6 +190,28 @@ public final class OciStreamingHelper {
         return adminClient.deleteStreamPool(DeleteStreamPoolRequest.builder().streamPoolId(streamPoolId).build());
     }
 
+    public static DeleteStreamPoolResponse deleteStreamPoolWhenEmpty(
+            StreamAdminClient adminClient,
+            String streamPoolId,
+            long resourceWaitTimeoutMs)
+            throws InterruptedException {
+        final long deadline = System.currentTimeMillis() + resourceWaitTimeoutMs;
+
+        LOG.info("Deleting stream pool via API streamPoolId={}", streamPoolId);
+        while (true) {
+            try {
+                return adminClient.deleteStreamPool(DeleteStreamPoolRequest.builder().streamPoolId(streamPoolId).build());
+            } catch (BmcException ex) {
+                if (!isStreamPoolNotEmpty(ex) || System.currentTimeMillis() >= deadline) {
+                    throw ex;
+                }
+
+                LOG.debug("Stream pool is not empty yet; retrying deletion. streamPoolId={}", streamPoolId);
+                Thread.sleep(RESOURCE_WAIT_POLL_INTERVAL_MS);
+            }
+        }
+    }
+
     public static CreateStreamResponse createStream(
             StreamAdminClient adminClient,
             String poolId,
@@ -213,6 +246,13 @@ public final class OciStreamingHelper {
     public static DeleteStreamResponse deleteStream(StreamAdminClient adminClient, String streamId) {
         LOG.info("Deleting stream via API streamId={}", streamId);
         return adminClient.deleteStream(DeleteStreamRequest.builder().streamId(streamId).build());
+    }
+
+    private static boolean isStreamPoolNotEmpty(BmcException ex) {
+        return ex.getStatusCode() == 400
+                && "InvalidParameter".equals(ex.getServiceCode())
+                && ex.getMessage() != null
+                && ex.getMessage().contains("is not empty");
     }
 
     public static void deleteStreams(List<StreamSummary> streamSummaries, StreamAdminClient adminClient) {
