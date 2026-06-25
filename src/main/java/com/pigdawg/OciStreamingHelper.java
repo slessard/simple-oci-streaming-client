@@ -172,6 +172,42 @@ public final class OciStreamingHelper {
                         .build());
     }
 
+    public static void waitForStreamPoolToBecomeDeleted(StreamAdminClient adminClient, String streamPoolId, long resourceWaitTimeoutMs)
+            throws InterruptedException {
+        final long deadline = System.currentTimeMillis() + resourceWaitTimeoutMs;
+
+        while (System.currentTimeMillis() < deadline) {
+            GetStreamPoolResponse response;
+            try {
+                response = getStreamPool(adminClient, streamPoolId);
+            } catch (BmcException ex) {
+                if (ex.getStatusCode() == 404) {
+                    LOG.info("Stream pool is no longer returned by OCI; treating it as DELETED. streamPoolId={}", streamPoolId);
+                    return;
+                }
+
+                throw ex;
+            }
+
+            StreamPool.LifecycleState state = response.getStreamPool().getLifecycleState();
+            LOG.debug("Polling stream pool deletion state. streamPoolId={} state={}", streamPoolId, state);
+            if (StreamPool.LifecycleState.Deleted.equals(state)) {
+                LOG.info("Stream pool is DELETED. streamPoolId={}", streamPoolId);
+                return;
+            }
+
+            if (StreamPool.LifecycleState.Failed.equals(state)) {
+                throw new IllegalStateException(
+                        "Stream pool " + streamPoolId + " entered terminal state: " + state);
+            }
+
+            Thread.sleep(RESOURCE_WAIT_POLL_INTERVAL_MS);
+        }
+
+        throw new IllegalStateException(
+                "Timed out waiting for stream pool " + streamPoolId + " to become DELETED");
+    }
+
     public static CreateStreamPoolResponse createStreamPool(
             StreamAdminClient adminClient,
             String compartmentId,

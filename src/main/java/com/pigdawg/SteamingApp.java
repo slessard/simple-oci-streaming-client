@@ -162,6 +162,7 @@ public class SteamingApp {
                 try {
                     LOG.info("Deleting stream pool id={}", streamPoolId);
                     OciStreamingHelper.deleteStreamPoolWhenEmpty(adminClient, streamPoolId, RESOURCE_DELETE_TIMEOUT_MS);
+                    OciStreamingHelper.waitForStreamPoolToBecomeDeleted(adminClient, streamPoolId, RESOURCE_DELETE_TIMEOUT_MS);
                 } catch (RuntimeException | InterruptedException ex) {
                     cleanupFailure = rememberCleanupFailure(primaryFailure, cleanupFailure, ex);
                     LOG.warn("Stream pool deletion failed. streamPoolId={}", streamPoolId, ex);
