@@ -13,6 +13,7 @@ This is a small Java 17 Maven project named `simple-oci-streaming-client`. It de
 Key files:
 
 - `pom.xml` — Maven build, Java version, dependencies, and `exec-maven-plugin` configuration.
+- `src/main/java/com/pigdawg/ConfigLoader.java` — shared helper for loading `application.properties` and validating required keys.
 - `src/main/java/com/pigdawg/SteamingApp.java` — application entry point that provisions OCI Streaming resources, creates the initial cursor, starts producer/consumer threads, and performs cleanup.
 - `src/main/java/com/pigdawg/ProducerConsumerThreads.java` — encapsulates the producer/consumer thread creation plus the shared deadlines and counters used to coordinate message production and draining.
 - `src/main/java/com/pigdawg/OciStreamingHelper.java` — shared OCI Streaming helper methods for client creation, resource lifecycle operations, cursor creation, message publishing, and polling.
@@ -76,6 +77,7 @@ Key files:
 ## Known Project Notes
 
 - The main application class is `com.pigdawg.SteamingApp`.
+- Shared application configuration loading now lives in `com.pigdawg.ConfigLoader`; prefer using it instead of duplicating `application.properties` parsing.
 - Producer/consumer thread coordination now lives in `com.pigdawg.ProducerConsumerThreads`; if that flow changes, keep the shared counters, deadlines, and termination logic together.
 - OCI SDK calls and stream lifecycle helpers live in `com.pigdawg.OciStreamingHelper`; prefer extending that helper instead of reintroducing low-level SDK boilerplate into `SteamingApp`.
 - The class name appears to be spelled `SteamingApp`; do not rename it unless requested, because the Maven exec configuration depends on it.

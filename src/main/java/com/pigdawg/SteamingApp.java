@@ -6,7 +6,6 @@ import com.oracle.bmc.streaming.responses.CreateGroupCursorResponse;
 import com.oracle.bmc.streaming.responses.CreateStreamPoolResponse;
 import com.oracle.bmc.streaming.responses.CreateStreamResponse;
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,43 +16,19 @@ import org.slf4j.LoggerFactory;
 public class SteamingApp {
     private static final Logger LOG = LoggerFactory.getLogger(SteamingApp.class);
 
-    private static final String APPLICATION_PROPERTIES = "application.properties";
-    private static final Properties APP_PROPERTIES = loadApplicationProperties();
+    private static final Properties APP_PROPERTIES = ConfigLoader.loadApplicationProperties(SteamingApp.class);
 
-    public static final String ENDPOINT_OCI_STREAMING = getRequiredProperty("oci.streaming.endpoint");
-    public static final String ENDPOINT_OCI_IDENTITY = getRequiredProperty("oci.identity.endpoint");
+    public static final String ENDPOINT_OCI_STREAMING = ConfigLoader.getRequiredProperty(APP_PROPERTIES, "oci.streaming.endpoint");
+    public static final String ENDPOINT_OCI_IDENTITY = ConfigLoader.getRequiredProperty(APP_PROPERTIES, "oci.identity.endpoint");
 
-    public static final String TENANT_STREAMING = getRequiredProperty("oci.streaming.tenancy");
+    public static final String TENANT_STREAMING = ConfigLoader.getRequiredProperty(APP_PROPERTIES, "oci.streaming.tenancy");
 
-    public static final String COMPARTMENT_DELTA = getRequiredProperty("oci.streaming.compartment");
+    public static final String COMPARTMENT_DELTA = ConfigLoader.getRequiredProperty(APP_PROPERTIES, "oci.streaming.compartment");
 
-    private static final String AUTH_PROFILE_DELTA = getRequiredProperty("oci.auth.profile");
+    private static final String AUTH_PROFILE_DELTA = ConfigLoader.getRequiredProperty(APP_PROPERTIES, "oci.auth.profile");
 
     private static final long RESOURCE_CREATE_TIMEOUT_MS = Duration.ofMinutes(5).toMillis();
     private static final long RESOURCE_DELETE_TIMEOUT_MS = Duration.ofMinutes(5).toMillis();
-
-    private static Properties loadApplicationProperties() {
-        try (InputStream inputStream = SteamingApp.class.getClassLoader().getResourceAsStream(APPLICATION_PROPERTIES)) {
-            if (inputStream == null) {
-                throw new IllegalStateException("Unable to find " + APPLICATION_PROPERTIES + " on the classpath");
-            }
-
-            Properties properties = new Properties();
-            properties.load(inputStream);
-            return properties;
-        } catch (IOException ex) {
-            throw new ExceptionInInitializerError(ex);
-        }
-    }
-
-    private static String getRequiredProperty(String key) {
-        String value = APP_PROPERTIES.getProperty(key);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing required property: " + key);
-        }
-
-        return value;
-    }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         LOG.info("SteamingApp starting");
