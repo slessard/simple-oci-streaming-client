@@ -1,4 +1,4 @@
-# simple-oci-streaming-client
+# simple-oci-streaming-client-rest
 
 This project is a small Java 17 demo for OCI Streaming.
 
@@ -13,7 +13,7 @@ It is meant to show the basic lifecycle of using the streaming service from a Ja
 
 ## Configure the app
 
-The program reads its runtime settings from `src/main/resources/application.properties`.
+The program reads runtime settings from `src/main/resources/application.properties`.
 
 That file is intentionally not committed. Start from the example file in the same directory:
 

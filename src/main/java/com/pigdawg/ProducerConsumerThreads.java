@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.checkerframework.checker.nullness.qual.NonNull;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +21,7 @@ final class ProducerConsumerThreads {
     private final AtomicInteger producedCount = new AtomicInteger(0);
     private final AtomicInteger consumedCount = new AtomicInteger(0);
     private final AtomicBoolean producerDone = new AtomicBoolean(false);
+    private final AtomicReference<Exception> threadFailure = new AtomicReference<>();
 
     private String cursor;
 
@@ -45,7 +46,40 @@ final class ProducerConsumerThreads {
         return consumedCount.get();
     }
 
-    @NonNull
+    void throwIfFailed() {
+        Exception failure = threadFailure.get();
+        if (failure == null) {
+            return;
+        }
+
+        if (failure instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+
+        throw new IllegalStateException("Producer/consumer thread failed", failure);
+    }
+
+    Thread createProducerThread() {
+        return new Thread(() -> {
+            try {
+                LOG.info("Producer thread started for stream={}", streamId);
+                while (System.currentTimeMillis() < producerDeadlineMs) {
+                    int sequence = producedCount.incrementAndGet();
+                    String payload = "message-" + sequence;
+                    OciStreamingHelper.publishMessage(streamClient, streamId, payload);
+                    LOG.info("Produced: {}", payload);
+                    Thread.sleep(200);
+                }
+            } catch (Exception ex) {
+                rememberThreadFailure(ex);
+                LOG.error("Producer thread error for stream={}", streamId, ex);
+            } finally {
+                producerDone.set(true);
+                LOG.info("Producer thread exiting. totalProduced={}", producedCount.get());
+            }
+        }, "stream-producer");
+    }
+
     Thread createConsumerThread() {
         return new Thread(() -> {
             try {
@@ -83,29 +117,21 @@ final class ProducerConsumerThreads {
                 }
                 LOG.info("Consumer thread exiting. produced={} consumed={}", producedCount.get(), consumedCount.get());
             } catch (Exception ex) {
+                rememberThreadFailure(ex);
                 LOG.error("Consumer thread error for stream={}", streamId, ex);
             }
         }, "stream-consumer");
     }
 
-    @NonNull
-    Thread createProducerThread() {
-        return new Thread(() -> {
-            try {
-                LOG.info("Producer thread started for stream={}", streamId);
-                while (System.currentTimeMillis() < producerDeadlineMs) {
-                    int sequence = producedCount.incrementAndGet();
-                    String payload = "message-" + sequence;
-                    OciStreamingHelper.publishMessage(streamClient, streamId, payload);
-                    LOG.info("Produced: {}", payload);
-                    Thread.sleep(200);
-                }
-            } catch (Exception ex) {
-                LOG.error("Producer thread error for stream={}", streamId, ex);
-            } finally {
-                producerDone.set(true);
-                LOG.info("Producer thread exiting. totalProduced={}", producedCount.get());
-            }
-        }, "stream-producer");
+    private void rememberThreadFailure(Exception failure) {
+        Exception existingFailure = threadFailure.get();
+        if (existingFailure != null) {
+            existingFailure.addSuppressed(failure);
+            return;
+        }
+
+        if (!threadFailure.compareAndSet(null, failure)) {
+            threadFailure.get().addSuppressed(failure);
+        }
     }
 }

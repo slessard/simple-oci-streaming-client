@@ -12,13 +12,13 @@ This is a small Java 17 Maven project named `simple-oci-streaming-client`. It de
 
 Key files:
 
-- `pom.xml` — Maven build, Java version, dependencies, and `exec-maven-plugin` configuration.
-- `src/main/java/com/pigdawg/ConfigLoader.java` — shared helper for loading `application.properties` and validating required keys.
-- `src/main/java/com/pigdawg/SteamingApp.java` — application entry point that provisions OCI Streaming resources, creates the initial cursor, starts producer/consumer threads, and performs cleanup.
-- `src/main/java/com/pigdawg/ProducerConsumerThreads.java` — encapsulates the producer/consumer thread creation plus the shared deadlines and counters used to coordinate message production and draining.
-- `src/main/java/com/pigdawg/OciStreamingHelper.java` — shared OCI Streaming helper methods for client creation, resource lifecycle operations, cursor creation, message publishing, and polling.
-- `src/main/resources/logback.xml` — Logback console logging configuration.
-- `src/main/resources/application.properties` — local OCI configuration; intentionally ignored by Git.
+- `pom.xml` - Maven build, Java version, dependencies, and `exec-maven-plugin` configuration.
+- `src/main/java/com/pigdawg/ConfigLoader.java` - shared helper for loading `application.properties` and validating required keys.
+- `src/main/java/com/pigdawg/SteamingApp.java` - application entry point that provisions OCI Streaming resources, creates the initial cursor, starts producer/consumer threads, and performs cleanup.
+- `src/main/java/com/pigdawg/ProducerConsumerThreads.java` - encapsulates the producer/consumer thread creation plus the shared deadlines and counters used to coordinate message production and draining.
+- `src/main/java/com/pigdawg/OciStreamingHelper.java` - shared OCI Streaming helper methods for client creation, resource lifecycle operations, cursor creation, message publishing, and polling.
+- `src/main/resources/logback.xml` - Logback console logging configuration.
+- `src/main/resources/application.properties` - local OCI configuration; intentionally ignored by Git.
 
 ## Build and Runtime Expectations
 
